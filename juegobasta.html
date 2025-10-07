@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Juego de Cartas Digital</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&display=swap" rel="stylesheet">
+    <style>
+        /* --- FONDO DINÁMICO MEJORADO --- */
+        @keyframes move-bg {
+            0%{background-position:0% 50%}
+            50%{background-position:100% 50%}
+            100%{background-position:0% 50%}
+        }
+        @keyframes move-pattern {
+            from { background-position: 0 0; }
+            to { background-position: 500px 500px; }
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(-45deg, #e6b518, #ffca1b, #ffd54f, #cca217);
+            background-size: 400% 400%;
+            animation: move-bg 15s ease infinite;
+            overflow: hidden;
+            position: relative;
+        }
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background-image: url('https://images4.imagebam.com/45/a8/76/ME167JZ6_o.png');
+            background-size: 500px;
+            animation: move-pattern 40s linear infinite;
+            opacity: 0.15;
+            z-index: -1;
+        }
+
+        /* --- Estilo responsivo para el botón de inicio --- */
+        @media (min-width: 1024px) { /* lg breakpoint */
+            .btn-inicio-lg {
+                writing-mode: vertical-rl;
+                text-orientation: mixed;
+                transform: rotate(180deg);
+            }
+        }
+
+
+        /* --- PANTALLA DE CARGA --- */
+        .loader {
+            border: 8px solid rgba(0, 0, 0, 0.2);
+            border-top-color: #e6b518;
+            animation: spin 1s linear infinite;
+            border-radius: 50%;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* --- ANIMACIÓN "VÓRTICE DE ENERGÍA" (Para las 3 cartas iniciales) --- */
+        #drawn-cards-container::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, rgba(255,255,255,0.4) 0%, rgba(77,66,225,0) 60%);
+            border-radius: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            opacity: 0;
+            animation: vortex-effect 1.5s cubic-bezier(0.19, 1, 0.22, 1) forwards;
+        }
+
+        .drawn-card-wrapper {
+            opacity: 0;
+            position: relative;
+            overflow: hidden;
+            border-radius: 1rem;
+            width: 28vw;
+            max-width: 120px;
+        }
+        @media (min-width: 640px) { .drawn-card-wrapper { max-width: 180px; } }
+        @media (min-width: 1024px) { .drawn-card-wrapper { max-width: 250px; } }
+
+        .drawn-card-wrapper img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        @keyframes vortex-effect {
+            0% { transform: translate(-50%, -50%) scale(0) rotate(0deg); opacity: 1; }
+            50% { transform: translate(-50%, -50%) scale(1.5) rotate(180deg); }
+            100% { transform: translate(-50%, -50%) scale(0) rotate(360deg); opacity: 0; }
+        }
+
+        @keyframes shoot-out {
+            0% { opacity: 0; transform: scale(0.2) rotate(180deg); }
+            70% { opacity: 1; }
+            100% { opacity: 1; transform: scale(1) rotate(0deg); }
+        }
+        
+        .animate-vortex-1 { animation: shoot-out 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) 0.3s forwards; }
+        .animate-vortex-2 { animation: shoot-out 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) 0.5s forwards; }
+        .animate-vortex-3 { animation: shoot-out 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) 0.7s forwards; }
+        
+        @keyframes shine-effect {
+            0% { left: -150%; opacity: 0.8; }
+            100% { left: 150%; opacity: 0.8; }
+        }
+        .drawn-card-wrapper::after {
+            content: '';
+            position: absolute;
+            top: 0; left: -150%;
+            width: 100%; height: 100%;
+            background: linear-gradient(110deg, rgba(255, 255, 255, 0) 40%, rgba(255, 255, 255, 0.4) 50%, rgba(255, 255, 255, 0) 60%);
+            transform: skewX(-25deg);
+            animation: shine-effect 1.2s ease-in-out forwards;
+            opacity: 0;
+        }
+        .animate-vortex-1::after { animation-delay: 1.1s; }
+        .animate-vortex-2::after { animation-delay: 1.3s; }
+        .animate-vortex-3::after { animation-delay: 1.5s; }
+
+        @keyframes spiral-in {
+            0% { opacity: 0; transform: translateY(-100vh) scale(0.1) rotate(-540deg); }
+            100% { opacity: 1; transform: translateY(0) scale(1) rotate(0deg); }
+        }
+        .wild-card-animation-wrapper {
+            animation: spiral-in 1.2s cubic-bezier(0.32, 0, 0.1, 1) forwards;
+            opacity: 0;
+            width: 70vw;
+            max-width: 350px;
+        }
+
+        @keyframes points-effect-animation {
+            0% { opacity: 0; transform: translateY(20px) scale(0.8); }
+            20% { opacity: 1; transform: translateY(0) scale(1.2); }
+            80% { opacity: 1; transform: translateY(-20px) scale(1); }
+            100% { opacity: 0; transform: translateY(-40px) scale(0.8); }
+        }
+        .points-effect {
+            position: absolute;
+            font-size: 3rem; font-weight: 700;
+            text-shadow: 0 0 15px rgba(0,0,0,0.5);
+            animation: points-effect-animation 2s ease-out forwards;
+            pointer-events: none;
+        }
+        @media (min-width: 768px) { .points-effect { font-size: 5rem; } }
+
+        @keyframes round-transition-animation {
+            0% { transform: scale(0.5); opacity: 0; }
+            50% { transform: scale(1.2); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        #round-transition-text {
+            animation: round-transition-animation 1s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+        
+        /* --- Animación de salida para modales --- */
+        @keyframes fade-out {
+            from { opacity: 1; transform: scale(1); }
+            to { opacity: 0; transform: scale(0.95); }
+        }
+        .animate-fade-out {
+            animation: fade-out 0.3s ease-out forwards;
+        }
+
+        /* ===== NUEVO: Animación de salida "Arrugar Papel" ===== */
+        @keyframes crumple-out-left {
+            from { transform: translate(0, 0) rotate3d(0, 0, 1, 0deg) scale(1); opacity: 1; }
+            to { transform: translate(-30vw, -50vh) rotate3d(1, -1, 1, -540deg) scale(0); opacity: 0; }
+        }
+        @keyframes crumple-out-down {
+            from { transform: translate(0, 0) rotate3d(0, 0, 1, 0deg) scale(1); opacity: 1; }
+            to { transform: translate(0, 70vh) rotate3d(-1, 0, -1, 360deg) scale(0); opacity: 0; }
+        }
+        @keyframes crumple-out-right {
+            from { transform: translate(0, 0) rotate3d(0, 0, 1, 0deg) scale(1); opacity: 1; }
+            to { transform: translate(30vw, -50vh) rotate3d(-1, 1, -1, 540deg) scale(0); opacity: 0; }
+        }
+        .animate-crumple-1 { animation: crumple-out-left 0.7s cubic-bezier(0.68, -0.55, 0.27, 1.55) forwards; }
+        .animate-crumple-2 { animation: crumple-out-down 0.7s cubic-bezier(0.68, -0.55, 0.27, 1.55) forwards; }
+        .animate-crumple-3 { animation: crumple-out-right 0.7s cubic-bezier(0.68, -0.55, 0.27, 1.55) forwards; }
+        
+        
+        
+        /* ===== NUEVO: Estilo y animación para botón de comodín ===== */
+        @keyframes wild-shimmer {
+            0% { transform: translateX(-100%) skewX(-30deg); }
+            100% { transform: translateX(200%) skewX(-30deg); }
+        }
+        #draw-wild-card-button {
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        #draw-wild-card-button::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 50%;
+            height: 100%;
+            background: linear-gradient(110deg, rgba(255, 255, 255, 0) 20%, rgba(255, 255, 255, 0.3) 50%, rgba(255, 255, 255, 0) 80%);
+            animation: wild-shimmer 2.5s infinite linear;
+        }
+
+        /* ===== NUEVO: Animación de salida para Comodín "Absorber" ===== */
+        @keyframes wild-card-absorb {
+            from {
+                opacity: 1;
+                transform: scale(1) rotate(0deg);
+            }
+            to {
+                opacity: 0;
+                transform: scale(0.1) rotate(720deg) translateX(100%);
+            }
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4">
+
+    <!-- Pantalla de Carga -->
+    <div id="loading-overlay" class="fixed inset-0 bg-yellow-900 bg-opacity-90 flex flex-col items-center justify-center z-[200]">
+        <div class="loader h-24 w-24 mb-4"></div>
+        <h2 class="text-center text-white text-xl font-semibold">Cargando...</h2>
+    </div>
+
+    <!-- ===== Modal de Registro ===== -->
+    <div id="registration-modal" class="hidden fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-[300] p-4">
+        <div class="bg-white w-full max-w-lg p-6 sm:p-8 rounded-2xl shadow-xl">
+            <h2 class="text-2xl sm:text-3xl font-bold text-gray-800 text-center mb-6">Registro para Jugar</h2>
+            <p class="text-center text-gray-600 mb-6">Completa tus datos una sola vez para acceder al juego.</p>
+            <form id="registration-form" class="space-y-4">
+                <div>
+                    <label for="nombre" class="block text-sm font-medium text-gray-700">Nombre completo <span class="text-red-500">*</span></label>
+                    <input type="text" id="nombre" name="nombre" required class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-yellow-500 focus:border-yellow-500">
+                </div>
+                 <div>
+                    <label for="correo" class="block text-sm font-medium text-gray-700">Correo electrónico <span class="text-red-500">*</span></label>
+                    <input type="email" id="correo" name="correo" required class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-yellow-500 focus:border-yellow-500">
+                </div>
+                 <div>
+                    <label for="ciudad" class="block text-sm font-medium text-gray-700">Ciudad <span class="text-red-500">*</span></label>
+                    <input type="text" id="ciudad" name="ciudad" required class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-yellow-500 focus:border-yellow-500">
+                </div>
+                 <div>
+                    <label for="telefono" class="block text-sm font-medium text-gray-700">Teléfono (Opcional)</label>
+                    <input type="tel" id="telefono" name="telefono" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-yellow-500 focus:border-yellow-500">
+                </div>
+                 <div>
+                    <label for="organismo" class="block text-sm font-medium text-gray-700">Escuela, Empresa u Organismo (Opcional)</label>
+                    <input type="text" id="organismo" name="organismo" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-yellow-500 focus:border-yellow-500">
+                </div>
+                <button id="register-button" type="submit" class="w-full bg-yellow-500 text-white font-bold py-3 px-4 rounded-full shadow-lg text-lg hover:bg-yellow-600 transition-transform transform hover:scale-105 disabled:bg-gray-400">
+                    Registrar y Jugar
+                </button>
+                <p id="registration-error" class="text-red-500 text-center text-sm mt-2 hidden"></p>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Botón de Sonido Global -->
+    <button id="mute-button" class="fixed top-4 left-4 z-[210] bg-white rounded-full p-2 shadow-lg">
+        <svg id="sound-on-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+        </svg>
+        <svg id="sound-off-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-800 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l-4-4m0 4l4-4" />
+        </svg>
+    </button>
+    
+    <!-- Pantalla de Menú -->
+    <div id="menu-screen" class="hidden w-full h-full flex flex-col items-center justify-center p-8">
+        <img src="https://images4.imagebam.com/a6/3a/6b/ME167JZ2_o.png" alt="Título del Juego" class="w-full max-w-sm sm:max-w-md md:max-w-lg mb-8">
+        <button id="play-button" class="bg-white text-yellow-500 font-bold py-4 px-12 rounded-full shadow-lg text-xl sm:text-2xl hover:bg-gray-200 transition-transform transform hover:scale-110">
+            Jugar
+        </button>
+    </div>
+
+    <!-- Pantalla del Juego -->
+    <div id="game-screen" class="hidden grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-8 w-full max-w-7xl mx-auto h-full p-4">
+
+        <!-- Columna Izquierda: Botones de control -->
+        <div class="lg:col-span-2 flex flex-row lg:flex-col items-center justify-around lg:justify-center gap-4 py-4 lg:py-0">
+            <button id="startButton" class="bg-white text-yellow-500 font-bold text-xl sm:text-2xl lg:text-3xl py-4 px-6 lg:py-10 lg:px-6 rounded-full shadow-lg transition-all duration-300 transform btn-inicio-lg">
+                <span>Inicio</span>
+            </button>
+             <button id="menu-return-button" class="bg-gray-500 text-white font-bold py-3 px-5 rounded-full shadow-lg hover:bg-gray-600 transition-colors text-base sm:text-lg">
+                Menú
+            </button>
+        </div>
+
+        <!-- Bonches de Cartas (sin marco) -->
+        <div class="lg:col-span-5 flex flex-col items-center justify-center gap-4">
+            <div class="w-full max-w-sm h-28 sm:h-32 md:h-40 lg:h-48"><img id="blue-deck-img" src="" alt="Reverso Carta Azul" class="w-full h-full object-contain"></div>
+            <div class="w-full max-w-sm h-28 sm:h-32 md:h-40 lg:h-48"><img id="purple-deck-img" src="" alt="Reverso Carta Morada" class="w-full h-full object-contain"></div>
+            <div class="w-full max-w-sm h-28 sm:h-32 md:h-40 lg:h-48"><img id="yellow-deck-img" src="" alt="Reverso Carta Amarilla" class="w-full h-full object-contain"></div>
+        </div>
+        
+        <!-- Lado Derecho: Tiempo y Comodín -->
+        <div class="lg:col-span-5 flex flex-col items-center justify-evenly gap-4 py-4 lg:py-0">
+            <div id="timerDisplay" class="bg-white text-yellow-500 font-bold text-xl md:text-3xl py-3 px-8 lg:py-4 lg:px-12 rounded-full shadow-lg min-w-[180px] text-center">
+                Tiempo
+            </div>
+            <!-- Contenedor del Comodín con botón visible -->
+            <div class="flex flex-col items-center gap-4">
+                <!-- ===== BOTÓN DE COMODÍN MEJORADO ===== -->
+                <button id="draw-wild-card-button" class="bg-gradient-to-br from-purple-600 to-indigo-700 text-white font-bold py-3 px-6 rounded-full shadow-lg hover:from-purple-700 hover:to-indigo-800 transform hover:scale-105 text-base sm:text-lg">
+                    Tomar Comodín
+                </button>
+                <div class="w-full max-w-xs h-40 sm:h-56 md:h-64">
+                    <img id="wild-deck-img" src="" alt="Carta Comodín" class="w-full h-full object-contain">
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Contenedor para animaciones de efectos -->
+    <div id="animation-overlay" class="fixed inset-0 flex items-center justify-center z-[100] pointer-events-none"></div>
+
+    <!-- Overlay de Transición de Ronda -->
+    <div id="round-transition-overlay" class="hidden fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-[150]">
+        <h2 id="round-transition-text" class="text-6xl md:text-8xl font-bold text-white text-center" style="text-shadow: 0 0 20px #fff;"></h2>
+    </div>
+    
+    <!-- Modal Final del Juego -->
+    <div id="end-game-modal" class="hidden fixed inset-0 bg-black bg-opacity-80 flex flex-col items-center justify-center p-4 z-[150]">
+        <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-xl flex flex-col items-center gap-6 w-full max-w-md">
+            <h2 class="text-3xl md:text-4xl font-bold text-gray-800 text-center">¡Juego Terminado!</h2>
+            <div class="flex flex-col sm:flex-row gap-4 w-full">
+                <button id="play-again-button" class="w-full bg-green-500 text-white font-bold py-3 px-6 sm:px-8 rounded-full hover:bg-green-600 transition-colors text-lg">Volver a Jugar</button>
+                <button id="back-to-menu-button" class="w-full bg-gray-500 text-white font-bold py-3 px-6 sm:px-8 rounded-full hover:bg-gray-600 transition-colors text-lg">Volver al Menú</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para las 3 Cartas Robadas -->
+    <div id="cards-modal" class="hidden fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center p-4 z-50">
+        <div id="drawn-cards-container" class="flex items-center justify-center gap-2 sm:gap-4 md:gap-8 w-full relative"></div>
+        <!-- ===== BOTÓN DE CERRAR 'X' MEJORADO ===== -->
+        <button id="close-cards-modal-btn" class="absolute top-5 right-5 bg-gradient-to-br from-yellow-400 to-amber-500 rounded-full h-12 w-12 text-white shadow-lg hover:scale-110 transition-transform duration-300 flex items-center justify-center z-50">
+             <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                 <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+        </button>
+    </div>
+
+    <!-- Modal para Comodín (z-index corregido) -->
+    <div id="wild-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-60">
+        <div id="drawn-wild-card-container" class="w-full h-full flex items-center justify-center relative">
+            <!-- La carta del comodín se insertará aquí con JS -->
+        </div>
+        <button id="close-wild-modal-btn" class="absolute top-5 right-5 bg-gradient-to-br from-yellow-400 to-amber-500 rounded-full h-12 w-12 text-white shadow-lg hover:scale-110 transition-transform duration-300 flex items-center justify-center z-10">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+        </button>
+    </div>
+    
+    <!-- Modal para Efectos de Cartas (z-index corregido) -->
+    <div id="effect-modal" class="hidden fixed inset-0 bg-black bg-opacity-80 flex flex-col items-center justify-center z-70 p-4">
+        <div id="effect-modal-content" class="bg-white w-full h-full flex flex-col items-center justify-center gap-8 p-4">
+            <h3 id="effect-modal-title" class="text-3xl md:text-5xl font-bold text-gray-800 text-center"></h3>
+            <div id="effect-modal-cards" class="flex flex-wrap justify-center gap-4"></div>
+            <button id="close-effect-modal-btn" class="mt-4 bg-yellow-500 text-white font-bold py-3 px-8 rounded-full hover:bg-yellow-600 transition-colors text-lg sm:text-xl">OK</button>
+        </div>
+    </div>
+
+    <!-- Modal para escoger una carta (z-index corregido) -->
+    <div id="single-card-choice-modal" class="hidden fixed inset-0 bg-black bg-opacity-90 flex-col items-center justify-center p-4 z-70">
+        <h2 class="text-3xl md:text-4xl font-bold text-white mb-8 text-center">Falta de Recursos</h2>
+        <p class="text-white text-lg md:text-xl mb-8 text-center max-w-lg">Solo puedes escoger una carta para esta ronda. ¡Elige sabiamente!</p>
+        <div id="single-card-choices" class="flex items-center justify-center gap-4 sm:gap-8">
+            <!-- Las 3 cartas para elegir se insertarán aquí -->
+        </div>
+    </div>
+
+
+    <script>
+        // --- BASE DE DATOS DE CARTAS ---
+        const blueCardBack = 'https://images4.imagebam.com/24/cf/1f/ME165NIP_o.png';
+        const blueCardData = [
+            { name: 'Venta de maquillaje o skincare', img: 'https://images4.imagebam.com/36/db/ac/ME165M9M_o.png' }, { name: 'Venta de artículos de jardinería', img: 'https://images4.imagebam.com/24/31/9f/ME165M9L_o.png' }, { name: 'Plataforma de cursos online', img: 'https://images4.imagebam.com/6d/1b/5f/ME165M9K_o.png' }, { name: 'Creación de juegos lúdicos o psicoeducativos', img: 'https://images4.imagebam.com/9a/83/ee/ME165M9J_o.png' }, { name: 'Servicio de marketing digital', img: 'https://images4.imagebam.com/5b/a9/b7/ME165MLB_o.png' }, { name: 'Peluquería canina', img: 'https://images4.imagebam.com/12/26/62/ME165ML9_o.png' }, { name: 'Organización de eventos', img: 'https://images4.imagebam.com/2f/a3/ff/ME165ML7_o.png' }, { name: 'Reparación de vehículos a domicilio', img: 'https://images4.imagebam.com/ed/9b/46/ME165ML5_o.png' }, { name: 'Alquiler de inflables e inmobiliaria para fiestas', img: 'https://images4.imagebam.com/5b/e1/ca/ME165MQU_o.png' }, { name: 'Alquiler de vehículos eléctricos o bicicletas', img: 'https://images4.imagebam.com/14/4e/dc/ME165MQT_o.png' }, { name: 'Pastelería', img: 'https://images4.imagebam.com/e8/39/01/ME165MQS_o.png' }, { name: 'Productos personalizados (tazas, libretas, camisetas)', img: 'https://images4.imagebam.com/91/a2/a5/ME165MQR_o.png' }, { name: 'Suscripción mensual de snacks internacionales', img: 'https://images4.imagebam.com/1b/d1/d9/ME165MSL_o.png' }, { name: 'Kits para cultivar huertos en casa', img: 'https://images4.imagebam.com/d1/0f/56/ME165MSK_o.png' }, { name: 'Renta de trajes y vestidos para eventos', img: 'https://images4.imagebam.com/d3/75/39/ME165MSJ_o.png' }, { name: 'Elaboración de cerveza artesanal', img: 'https://images4.imagebam.com/07/79/04/ME165MSI_o.png' }, { name: 'Clases de defensa personal o artes marciales', img: 'https://images4.imagebam.com/2f/0b/25/ME165MWI_o.png' }, { name: 'Productos de papelería con diseños originales', img: 'https://images4.imagebam.com/35/8f/6d/ME165MWH_o.png' }, { name: 'Spa y salón de manicura', img: 'https://images4.imagebam.com/ae/1a/34/ME165MWG_o.png' }, { name: 'Elaboración de salsas y aderezos gourmet', img: 'https://images4.imagebam.com/ba/7f/2e/ME165MWE_o.png' }, { name: 'Una heladería', img: 'https://images4.imagebam.com/ae/2c/f6/ME165MX7_o.png' }, { name: 'Venta de plantas exóticas o raras', img: 'https://images4.imagebam.com/b0/a8/61/ME165MX4_o.png' }, { name: 'Experiencias turísticas locales', img: 'https://images4.imagebam.com/d6/8a/f4/ME165MX3_o.png' }, { name: 'Clases de idiomas por suscripción', img: 'https://images4.imagebam.com/a0/29/ac/ME165MX1_o.png' }, { name: 'Almuerzos o cenas caseras por encargo', img: 'https://images4.imagebam.com/b1/5e/99/ME165MY9_o.png' }, { name: 'Talleres de cerámica o alfarería', img: 'https://images4.imagebam.com/a9/2c/61/ME165MY8_o.png' }, { name: 'Tienda de alimentos naturales o Comidas saludables', img: 'https://images4.imagebam.com/9c/69/69/ME165MY7_o.png' }, { name: 'Desayunos sorpresa o cajas de regalo', img: 'https://images4.imagebam.com/04/36/13/ME165MY6_o.png' }, { name: 'Venta de chocolates artesanales premium', img: 'https://images4.imagebam.com/fe/35/e0/ME165N32_o.png' }, { name: 'Centros de recreación o Área de juegos', img: 'https://images4.imagebam.com/a6/42/af/ME165N30_o.png' }, { name: 'Coach de salud o nutrición', img: 'https://images4.imagebam.com/b8/0a/92/ME165N2Z_o.png' }, { name: 'Mentorías para emprendedores', img: 'https://images4.imagebam.com/01/e9/8e/ME165N2W_o.png' }, { name: 'Manualidades para vender', img: 'https://images4.imagebam.com/5f/60/48/ME165NCD_o.png' }, { name: 'Limpieza de casas o apartamentos por horas', img: 'https://images4.imagebam.com/58/ef/38/ME165NCA_o.png' }, { name: 'Velas o jabones artesanales', img: 'https://images4.imagebam.com/af/9f/b1/ME165NC9_o.png' }, { name: 'Planchar ropa o arreglos básicos de costura', img: 'https://images4.imagebam.com/29/c0/cf/ME165NC8_o.png' }, { name: 'Tienda de alimentos orgánicos', img: 'https://images4.imagebam.com/36/23/5a/ME165NIW_o.png' }, { name: 'Cuidado de adultos mayores o niños', img: 'https://images4.imagebam.com/4c/d2/98/ME165NIV_o.png' }, { name: 'App de meditación y mindfulness', img: 'https://images4.imagebam.com/92/a5/2e/ME165NIT_o.png' }, { name: 'Planificación de comidas saludables', img: 'https://images4.imagebam.com/5d/31/33/ME165NIR_o.png' }
+        ];
+        const yellowCardBack = 'https://images4.imagebam.com/b0/a8/43/ME16640K_o.png';
+        const yellowCardData = [
+            { name: 'Hecho en méxico', img: 'https://images4.imagebam.com/17/37/a4/ME16633J_o.png' }, { name: 'Bajo costo', img: 'https://images4.imagebam.com/1e/3c/5f/ME16633I_o.png' }, { name: 'Diseño artesanal', img: 'https://images4.imagebam.com/f3/6f/4e/ME16633H_o.png' }, { name: 'Único con patente', img: 'https://images4.imagebam.com/79/8a/b3/ME16633G_o.png' }, { name: 'Garantía de por vida', img: 'https://images4.imagebam.com/05/44/33/ME1663CL_o.png' }, { name: 'Sabores únicos', img: 'https://images4.imagebam.com/aa/5b/b1/ME1663CK_o.png' }, { name: 'Compra ahora y paga después', img: 'https://images4.imagebam.com/50/a6/f6/ME1663CJ_o.png' }, { name: 'Entrega en menos de 24 horas', img: 'https://images4.imagebam.com/98/37/2e/ME1663CI_o.png' }, { name: 'Personalizado a la medida del cliente', img: 'https://images4.imagebam.com/f3/3c/a1/ME1663S7_o.png' }, { name: 'Soporte técnico 24/7', img: 'https://images4.imagebam.com/19/61/4e/ME1663S6_o.png' }, { name: 'Incluye asesoría personalizada', img: 'https://images4.imagebam.com/e7/58/cf/ME1663S5_o.png' }, { name: 'Envío gratis a todo el país', img: 'https://images4.imagebam.com/89/b9/15/ME1663S4_o.png' }, { name: 'Edición limitada y coleccionable', img: 'https://images4.imagebam.com/a3/fc/15/ME1663ZW_o.png' }, { name: 'Hecho con energía 100% renovable', img: 'https://images4.imagebam.com/fc/10/13/ME1663ZV_o.png' }, { name: 'Fabricado con materiales reciclados', img: 'https://images4.imagebam.com/98/28/b4/ME1663ZU_o.png' }, { name: 'Compatible con tecnologías modernas', img: 'https://images4.imagebam.com/f1/6a/8d/ME1663ZT_o.png' }, { name: 'Ultra ligero y portátil', img: 'https://images4.imagebam.com/88/5f/7d/ME16640O_o.png' }, { name: 'Certificado por expertos internacionales', img: 'https://images4.imagebam.com/6f/07/2e/ME16640N_o.png' }, { name: 'Ingredientes 100% naturales', img: 'https://images4.imagebam.com/55/77/11/ME16640M_o.png' }, { name: 'Adaptado a personas con discapacidad', img: 'https://images4.imagebam.com/d9/a0/6f/ME16640L_o.png' }
+        ];
+        const purpleCardBack = 'https://images4.imagebam.com/42/66/10/ME1664IE_o.png';
+        const purpleCardData = [
+            { name: 'Jóvenes universitarios amantes de la tecnología', img: 'https://images4.imagebam.com/5a/00/84/ME166466_o.png' }, { name: 'Parejas recién casadas interesadas en viajes', img: 'https://images4.imagebam.com/e5/e4/ea/ME166465_o.png' }, { name: 'Adultos mayores que buscan actividades culturales', img: 'https://images4.imagebam.com/af/07/67/ME166464_o.png' }, { name: 'Adolescentes fanáticos de los videojuegos online', img: 'https://images4.imagebam.com/12/13/58/ME166463_o.png' }, { name: 'Familias que prefieren alimentación orgánica', img: 'https://images4.imagebam.com/87/56/12/ME16647D_o.png' }, { name: 'Estudiantes de posgrado que requieren networking', img: 'https://images4.imagebam.com/09/b1/c6/ME16647C_o.png' }, { name: 'Jubilados que practican deportes recreativos', img: 'https://images4.imagebam.com/9e/fe/ab/ME16647B_o.png' }, { name: 'Amantes del café y la gastronomía local', img: 'https://images4.imagebam.com/f4/0c/83/ME16647A_o.png' }, { name: 'Profesionales en tecnología que buscan capacitación constante', img: 'https://images4.imagebam.com/91/82/66/ME1664AE_o.png' }, { name: 'Personas amantes de la aventura y deportes extremos', img: 'https://images4.imagebam.com/93/ae/e0/ME1664AD_o.png' }, { name: 'Amantes del ciclismo urbano', img: 'https://images4.imagebam.com/82/b8/37/ME1664AC_o.png' }, { name: 'Profesionales que practican mindfulness y meditación', img: 'https://images4.imagebam.com/89/e8/b5/ME1664AB_o.png' }, { name: 'Hogares interesados en energías renovables', img: 'https://images4.imagebam.com/fc/9c/ff/ME1664I4_o.png' }, { name: 'Habidos de la lectura y clubes de libros', img: 'https://images4.imagebam.com/ca/dc/d5/ME1664I3_o.png' }, { name: 'Amantes de la jardinería y hogar sustentable', img: 'https://images4.imagebam.com/66/60/90/ME1664I2_o.png' }, { name: 'Personas interesadas en aprender nuevos idiomas', img: 'https://images4.imagebam.com/c8/4b/d6/ME1664I1_o.png' }, { name: 'Turistas extranjeros interesados en experiencias locales', img: 'https://images4.imagebam.com/02/9f/f5/ME1664II_o.png' }, { name: 'Padres primerizos que buscan educación temprana', img: 'https://images4.imagebam.com/09/a3/7b/ME1664IH_o.png' }, { name: 'Mujeres adultas interesados en moda urbana', img: 'https://images4.imagebam.com/e7/37/b3/ME1664IG_o.png' }, { name: 'Creadores de contenido en redes sociales', img: 'https://images4.imagebam.com/a1/94/ce/ME1664IF_o.png' }
+        ];
+        const wildCardImage = 'https://images4.imagebam.com/c1/ec/a2/ME1666BE_o.png';
+        const wildCardData = [
+            // Premios
+            { name: 'Capital semilla', img: 'https://images4.imagebam.com/a4/e2/9c/ME16658V_o.png', type: 'premio', effect: 'add_points_50' },
+            { name: 'Innovador del mes', img: 'https://images4.imagebam.com/79/42/bf/ME16658T_o.png', type: 'premio', effect: 'extra_card_yellow' },
+            { name: 'Inspiración repentina', img: 'https://images4.imagebam.com/35/96/00/ME16658R_o.png', type: 'premio', effect: 'extra_wild_card' },
+            { name: 'Inversión sorpresa', img: 'https://images4.imagebam.com/2b/e7/fa/ME16658P_o.png', type: 'premio', effect: 'add_points_30' },
+            { name: 'Innovación social', img: 'https://images4.imagebam.com/7a/6f/92/ME1665NH_o.png', type: 'premio', effect: 'info_only' },
+            { name: 'Campaña viral', img: 'https://images4.imagebam.com/0f/51/dd/ME1665NG_o.png', type: 'premio', effect: 'double_points' },
+            { name: 'Idea millonaria', img: 'https://images4.imagebam.com/be/3b/e9/ME1665NF_o.png', type: 'premio', effect: 'info_only' },
+            { name: 'Networking efectivo', img: 'https://images4.imagebam.com/69/21/78/ME1665NE_o.png', type: 'premio', effect: 'extra_cards_purple_2' },
+            { name: 'Socio estratégico', img: 'https://images4.imagebam.com/05/23/6d/ME1665OT_o.png', type: 'premio', effect: 'info_only' },
+            { name: 'Apoyo comunitario', img: 'https://images4.imagebam.com/59/f9/0d/ME1665OS_o.png', type: 'premio', effect: 'info_only' },
+            // Castigos
+            { name: 'Falta de recursos', img: 'https://images4.imagebam.com/86/bc/de/ME1665QG_o.png', type: 'castigo', effect: 'one_card_next_round' },
+            { name: 'Falta de liquidez', img: 'https://images4.imagebam.com/3d/5c/51/ME167JL4_o.png', type: 'castigo', effect: 'no_wild_card_next_round' },
+            { name: 'Apagón inesperado', img: 'https://images4.imagebam.com/9f/c6/3d/ME1665XD_o.png', type: 'castigo', effect: 'info_only' },
+            { name: 'Competencia agresiva', img: 'https://images4.imagebam.com/67/1d/64/ME1665XC_o.png', type: 'castigo', effect: 'subtract_points_20' },
+            { name: 'Mala estrategia de precios', img: 'https://images4.imagebam.com/4b/e9/bc/ME1665XB_o.png', type: 'castigo', effect: 'halve_points' },
+            { name: 'Problemas legales', img: 'https://images4.imagebam.com/aa/a2/a9/ME1665XA_o.png', type: 'castigo', effect: 'info_only' },
+            { name: 'Campaña fallida', img: 'https://images4.imagebam.com/5d/6a/83/ME16665X_o.png', type: 'castigo', effect: 'return_wild_card' },
+            { name: 'Robo de idea', img: 'https://images4.imagebam.com/43/1c/74/ME167J2P_o.png', type: 'castigo', effect: 'info_only' },
+            { name: 'Cliente insatisfecho', img: 'https://images4.imagebam.com/3c/f9/2b/ME16665V_o.png', type: 'castigo', effect: 'info_only' },
+            { name: 'Caída bursátil', img: 'https://images4.imagebam.com/11/b5/06/ME16665U_o.png', type: 'castigo', effect: 'info_only' },
+        ];
+
+
+        // --- Elementos del DOM ---
+        const startButton = document.getElementById('startButton');
+        const timerDisplay = document.getElementById('timerDisplay');
+        const wildDeckButton = document.getElementById('draw-wild-card-button');
+        const cardsModal = document.getElementById('cards-modal');
+        const drawnCardsContainer = document.getElementById('drawn-cards-container');
+        const closeCardsModalBtn = document.getElementById('close-cards-modal-btn');
+        const wildModal = document.getElementById('wild-modal');
+        const closeWildModalBtn = document.getElementById('close-wild-modal-btn');
+        const drawnWildCardContainer = document.getElementById('drawn-wild-card-container');
+        const blueDeckImg = document.getElementById('blue-deck-img');
+        const purpleDeckImg = document.getElementById('purple-deck-img');
+        const yellowDeckImg = document.getElementById('yellow-deck-img');
+        const wildDeckImg = document.getElementById('wild-deck-img');
+        const animationOverlay = document.getElementById('animation-overlay');
+        const effectModal = document.getElementById('effect-modal');
+        const effectModalTitle = document.getElementById('effect-modal-title');
+        const effectModalCards = document.getElementById('effect-modal-cards');
+        const closeEffectModalBtn = document.getElementById('close-effect-modal-btn');
+        const loadingOverlay = document.getElementById('loading-overlay');
+        const menuScreen = document.getElementById('menu-screen');
+        const gameScreen = document.getElementById('game-screen');
+        const playButton = document.getElementById('play-button');
+        const roundTransitionOverlay = document.getElementById('round-transition-overlay');
+        const roundTransitionText = document.getElementById('round-transition-text');
+        const endGameModal = document.getElementById('end-game-modal');
+        const playAgainButton = document.getElementById('play-again-button');
+        const backToMenuButton = document.getElementById('back-to-menu-button');
+        const menuReturnButton = document.getElementById('menu-return-button');
+        const singleCardChoiceModal = document.getElementById('single-card-choice-modal');
+        const singleCardChoices = document.getElementById('single-card-choices');
+        const muteButton = document.getElementById('mute-button');
+        const soundOnIcon = document.getElementById('sound-on-icon');
+        const soundOffIcon = document.getElementById('sound-off-icon');
+        const registrationModal = document.getElementById('registration-modal');
+        const registrationForm = document.getElementById('registration-form');
+        const registerButton = document.getElementById('register-button');
+        const registrationError = document.getElementById('registration-error');
+        
+        // --- Estado del juego ---
+        let timerInterval;
+        let timeLeft = 600;
+        const totalRounds = 4;
+        let currentRound = 1;
+        let isGameRunning = false;
+        let isPostRoundPhase = false;
+        let isOneCardNextRound = false;
+        let canDrawWildNextRound = true;
+        let blueDeck = [], purpleDeck = [], yellowDeck = [], wildDeck = [];
+        let isMuted = false;
+        let audioInitialized = false;
+
+        // --- Manejador de Sonidos y Música con Tone.js ---
+        const soundManager = {
+            synths: {
+                click: new Tone.MembraneSynth().toDestination(),
+                cardDraw: new Tone.NoiseSynth({ noise: { type: 'white' }, envelope: { attack: 0.005, decay: 0.1, sustain: 0 } }).toDestination(),
+                wildDraw: new Tone.PluckSynth().toDestination(),
+                gainPoints: new Tone.Synth().toDestination(),
+                losePoints: new Tone.Synth({ oscillator: { type: 'square' } }).toDestination(),
+                roundEnd: new Tone.Synth().toDestination()
+            },
+            music: {
+                chordSynth: new Tone.PolySynth(Tone.FMSynth, { harmonicity: 3, modulationIndex: 10, envelope: { attack: 0.01, decay: 0.2, sustain: 0.5, release: 1 } }),
+                bass: new Tone.MonoSynth({ oscillator: { type: "fatsawtooth" }, envelope: { attack: 0.05, decay: 0.1, sustain: 0.4, release: 1 } }),
+                kick: new Tone.MembraneSynth({ octaves: 4, pitchDecay: 0.1 }),
+                hihat: new Tone.NoiseSynth({ noise: { type: "pink" }, envelope: { attack: 0.001, decay: 0.03, sustain: 0 } })
+            },
+            setupMusic: function() {
+                const reverb = new Tone.Reverb({ decay: 4, wet: 0.2 }).toDestination();
+                this.music.chordSynth.connect(reverb); this.music.bass.connect(reverb);
+                this.music.kick.toDestination(); this.music.hihat.toDestination();
+                this.music.chordSynth.volume.value = -18; this.music.bass.volume.value = -14;
+                this.music.kick.volume.value = -10; this.music.hihat.volume.value = -22;
+                new Tone.Sequence((time, chord) => { this.music.chordSynth.triggerAttackRelease(chord, "1m", time); }, [["C4", "E4", "G4"], ["A3", "C4", "E4"], ["F3", "A3", "C4"], ["G3", "B3", "D4"]], "1m").start(0);
+                new Tone.Sequence((time, note) => { this.music.bass.triggerAttackRelease(note, "2n", time); }, ["C2", "A1", "F1", "G1"], "1m").start(0);
+                new Tone.Sequence((time, note) => { this.music.kick.triggerAttackRelease(note, '8n', time); }, ["C1", null, null, "C1", null, "C1", null, null], "4n").start(0);
+                new Tone.Sequence((time, note) => { this.music.hihat.triggerAttackRelease('16n', time); }, [null, 'C4', 'C4', 'C4'], "8n").start(0);
+                Tone.Transport.bpm.value = 85; Tone.Transport.loop = true; Tone.Transport.loopEnd = '2m';
+            },
+            playSound: function(soundName) {
+                if (isMuted || !audioInitialized) return;
+                const now = Tone.now();
+                switch (soundName) {
+                    case 'click': this.synths.click.triggerAttackRelease('C2', '8n', now); break;
+                    case 'cardDraw': this.synths.cardDraw.triggerAttackRelease('2n', now); break;
+                    case 'wildDraw':
+                        this.synths.wildDraw.triggerAttackRelease('G5', '8n', now);
+                        this.synths.wildDraw.triggerAttackRelease('C6', '8n', now + 0.1);
+                        break;
+                    case 'gainPoints': this.synths.gainPoints.triggerAttackRelease('C5', '16n', now); this.synths.gainPoints.triggerAttackRelease('E5', '16n', now + 0.1); this.synths.gainPoints.triggerAttackRelease('G5', '16n', now + 0.2); break;
+                    case 'losePoints': this.synths.losePoints.triggerAttackRelease('G3', '16n', now); this.synths.losePoints.triggerAttackRelease('E3', '16n', now + 0.1); this.synths.losePoints.triggerAttackRelease('C3', '16n', now + 0.2); break;
+                    case 'roundEnd': this.synths.roundEnd.triggerAttackRelease('G5', '8n', now); this.synths.roundEnd.triggerAttackRelease('C6', '4n', now + 0.2); break;
+                }
+            },
+            toggleMute: function() {
+                isMuted = !isMuted; Tone.Destination.mute = isMuted;
+                soundOnIcon.classList.toggle('hidden', isMuted); soundOffIcon.classList.toggle('hidden', !isMuted);
+            }
+        };
+
+        async function initializeAudio() {
+            if (audioInitialized) return;
+            await Tone.start();
+            soundManager.setupMusic();
+            audioInitialized = true;
+            console.log("Audio está listo.");
+        }
+
+
+        // --- FUNCIONES DEL JUEGO ---
+        function createDecks() {
+            blueDeck = [...blueCardData]; purpleDeck = [...purpleCardData];
+            yellowDeck = [...yellowCardData]; wildDeck = [...wildCardData];
+        }
+
+        function shuffle(deck) {
+            for (let i = deck.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [deck[i], deck[j]] = [deck[j], deck[i]];
+            }
+        }
+
+        function drawCard(deck) { return deck.length > 0 ? deck.pop() : null; }
+        
+        function formatTime(seconds) {
+            const minutes = Math.floor(seconds / 60);
+            const remainingSeconds = seconds % 60;
+            return `${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
+        }
+
+        function showRoundTransition(round) {
+            soundManager.playSound('roundEnd');
+            roundTransitionText.textContent = `Ronda ${round}`;
+            roundTransitionOverlay.classList.remove('hidden');
+            setTimeout(() => { roundTransitionOverlay.classList.add('hidden'); }, 2000);
+        }
+
+        function startRoundFlow() {
+             soundManager.playSound('click');
+             if (isGameRunning || isPostRoundPhase) {
+                 resetGame();
+                 setTimeout(startRound, 100); 
+             } else {
+                 startRound();
+             }
+        }
+
+        function startRound() {
+            if(isGameRunning) return;
+            isGameRunning = true; isPostRoundPhase = false;
+            startButton.disabled = true;
+            startButton.classList.add('opacity-50', 'cursor-not-allowed');
+            startButton.querySelector('span').textContent = 'Reiniciar';
+            wildDeckButton.disabled = !canDrawWildNextRound;
+            wildDeckButton.classList.toggle('opacity-50', !canDrawWildNextRound);
+            wildDeckButton.classList.toggle('cursor-not-allowed', !canDrawWildNextRound);
+
+            createDecks();
+            shuffle(blueDeck); shuffle(purpleDeck); shuffle(yellowDeck); shuffle(wildDeck);
+
+            if (isOneCardNextRound) {
+                isOneCardNextRound = false;
+                handleSingleCardChoice();
+                return;
+            }
+
+            timeLeft = 600;
+            timerDisplay.innerHTML = `<span>${formatTime(timeLeft)}</span>`;
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                timerDisplay.querySelector('span').textContent = formatTime(timeLeft);
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    soundManager.playSound('roundEnd');
+                    endRound();
+                }
+            }, 1000);
+
+            const cardsToDraw = [
+                { cardData: drawCard(blueDeck), animation: 'animate-vortex-1' },
+                { cardData: drawCard(purpleDeck), animation: 'animate-vortex-2' },
+                { cardData: drawCard(yellowDeck), animation: 'animate-vortex-3' },
+            ].filter(c => c.cardData);
+            
+            drawnCardsContainer.innerHTML = ''; 
+            cardsToDraw.forEach(cardInfo => {
+                const wrapper = document.createElement('div');
+                wrapper.className = `drawn-card-wrapper ${cardInfo.animation}`;
+                wrapper.innerHTML = `<img src="${cardInfo.cardData.img}" alt="${cardInfo.cardData.name}">`;
+                drawnCardsContainer.appendChild(wrapper);
+            });
+            soundManager.playSound('cardDraw');
+            cardsModal.classList.remove('hidden');
+            closeCardsModalBtn.disabled = false;
+        }
+
+        function handleSingleCardChoice() {
+            singleCardChoices.innerHTML = '';
+            const choices = [
+                { deck: 'blue', back: blueCardBack },
+                { deck: 'purple', back: purpleCardBack },
+                { deck: 'yellow', back: yellowCardBack }
+            ];
+            
+            choices.forEach(choice => {
+                const cardBack = document.createElement('img');
+                cardBack.src = choice.back;
+                cardBack.className = "w-32 sm:w-48 h-auto cursor-pointer hover:scale-110 transition-transform";
+                cardBack.dataset.deck = choice.deck;
+                cardBack.onclick = (e) => {
+                    soundManager.playSound('click');
+                    const selectedDeck = e.target.dataset.deck;
+                    let drawnCard;
+                    if (selectedDeck === 'blue') drawnCard = drawCard(blueDeck);
+                    if (selectedDeck === 'purple') drawnCard = drawCard(purpleDeck);
+                    if (selectedDeck === 'yellow') drawnCard = drawCard(yellowDeck);
+
+                    Array.from(singleCardChoices.children).forEach(child => {
+                        child.style.opacity = child !== e.target ? '0.2' : '1';
+                        child.style.pointerEvents = 'none';
+                    });
+                    
+                    e.target.src = drawnCard.img;
+
+                    setTimeout(() => {
+                        singleCardChoiceModal.classList.add('hidden');
+                        drawnCardsContainer.innerHTML = '';
+                        const wrapper = document.createElement('div');
+                        wrapper.className = 'drawn-card-wrapper animate-vortex-1';
+                        wrapper.style.cssText = 'max-width: 250px; width: 60vw;';
+                        wrapper.innerHTML = `<img src="${drawnCard.img}" alt="${drawnCard.name}">`;
+                        drawnCardsContainer.appendChild(wrapper);
+                        setTimeout(() => wrapper.style.opacity = 1, 50);
+                        cardsModal.classList.remove('hidden');
+                        closeCardsModalBtn.disabled = false;
+
+                        timeLeft = 600;
+                        timerDisplay.innerHTML = `<span>${formatTime(timeLeft)}</span>`;
+                        timerInterval = setInterval(() => {
+                            timeLeft--;
+                            timerDisplay.querySelector('span').textContent = formatTime(timeLeft);
+                            if (timeLeft <= 0) { clearInterval(timerInterval); endRound(); }
+                        }, 1000);
+                    }, 2000);
+                };
+                singleCardChoices.appendChild(cardBack);
+            });
+            singleCardChoiceModal.classList.remove('hidden');
+        }
+
+        function endRound() {
+            isGameRunning = false; isPostRoundPhase = true;
+            closeCardsModalBtn.disabled = false;
+            canDrawWildNextRound = true;
+
+            if (currentRound >= totalRounds) {
+                timerDisplay.innerHTML = `<button id="end-game-btn" class="bg-red-500 text-white font-bold py-2 px-4 rounded-full text-base sm:text-lg">Terminar Juego</button>`;
+                document.getElementById('end-game-btn').addEventListener('click', () => {
+                    soundManager.playSound('click');
+                    endGameModal.classList.remove('hidden');
+                });
+            } else {
+                timerDisplay.innerHTML = `<button id="next-round-btn" class="bg-green-500 text-white font-bold py-2 px-4 rounded-full text-base sm:text-lg">Ronda ${currentRound + 1}</button>`;
+                document.getElementById('next-round-btn').addEventListener('click', () => {
+                    soundManager.playSound('click');
+                    currentRound++;
+                    showRoundTransition(currentRound);
+                    setTimeout(startRound, 2100);
+                });
+            }
+        }
+
+        function resetGame() {
+            isGameRunning = false; isPostRoundPhase = false;
+            isOneCardNextRound = false; canDrawWildNextRound = true;
+            clearInterval(timerInterval);
+            currentRound = 1; timeLeft = 600;
+            timerDisplay.innerHTML = `<span>Tiempo</span>`;
+            startButton.querySelector('span').textContent = 'Inicio';
+            startButton.disabled = false;
+            startButton.classList.remove('opacity-50', 'cursor-not-allowed');
+            closeCardsModalBtn.disabled = false;
+            wildDeckButton.disabled = false;
+            wildDeckButton.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+        
+        // ===== FUNCIÓN DE CERRAR MODAL GENÉRICA (PARA COMODÍN, ETC) =====
+        function closeModal(modalElement) {
+            soundManager.playSound('click');
+            modalElement.classList.add('animate-fade-out');
+            setTimeout(() => {
+                modalElement.classList.add('hidden');
+                modalElement.classList.remove('animate-fade-out');
+            }, 300);
+        }
+
+        // ===== NUEVA FUNCIÓN PARA CERRAR MODAL DE COMODÍN CON EFECTO =====
+        function closeWildModalWithEffect() {
+            soundManager.playSound('click');
+            const wildCardWrapper = drawnWildCardContainer.querySelector('.wild-card-animation-wrapper');
+            const modal = document.getElementById('wild-modal');
+
+            if (wildCardWrapper) {
+                // Add a new animation class to the card wrapper
+                wildCardWrapper.style.animation = 'wild-card-absorb 0.7s cubic-bezier(0.68, -0.55, 0.27, 1.55) forwards';
+            }
+
+            // Fade out the modal background
+            modal.style.transition = 'background-color 0.7s ease';
+            modal.style.backgroundColor = 'rgba(0,0,0,0)';
+            
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                // Reset styles for next time
+                modal.style.backgroundColor = ''; // Reset to default from CSS
+                if (wildCardWrapper) {
+                    wildCardWrapper.style.animation = ''; // Reset animation
+                }
+            }, 700);
+        }
+
+        // ===== NUEVA FUNCIÓN PARA CERRAR LAS 3 CARTAS INICIALES =====
+        function closeInitialCards() {
+            soundManager.playSound('click');
+            const cardWrappers = drawnCardsContainer.querySelectorAll('.drawn-card-wrapper');
+            
+            // Aplica animación de salida a cada carta
+            if (cardWrappers.length > 0) {
+                cardWrappers[0]?.classList.add('animate-crumple-1');
+                cardWrappers[1]?.classList.add('animate-crumple-2');
+                cardWrappers[2]?.classList.add('animate-crumple-3');
+            }
+            
+            // Oculta el modal y reactiva el botón de reinicio DESPUÉS de la animación
+            setTimeout(() => {
+                cardsModal.classList.add('hidden');
+                // Arreglo del bug: Reactiva el botón para poder reiniciar
+                startButton.disabled = false;
+                startButton.classList.remove('opacity-50', 'cursor-not-allowed');
+            }, 700); // Coincide con la duración de la animación "crumple"
+        }
+        
+        function setInitialDeckImages() {
+            blueDeckImg.src = blueCardBack; purpleDeckImg.src = purpleCardBack;
+            yellowDeckImg.src = yellowCardBack; wildDeckImg.src = wildCardImage;
+        }
+
+        function showPointsAnimation(text, color = 'text-green-400') {
+            const effectEl = document.createElement('div');
+            effectEl.textContent = text;
+            effectEl.className = `points-effect ${color}`;
+            animationOverlay.appendChild(effectEl);
+            setTimeout(() => { effectEl.remove(); }, 2000);
+        }
+
+        function drawExtraCards(deckType, amount) {
+            const drawn = []; let deck, title;
+            if (deckType === 'yellow') { deck = yellowDeck; title = "Ganas una carta de Propuesta de Valor"; } 
+            else { deck = purpleDeck; title = "Ganas 2 cartas de Segmento de Clientes"; }
+            for (let i = 0; i < amount; i++) { const card = drawCard(deck); if(card) drawn.push(card); }
+            if(drawn.length > 0) {
+                effectModalTitle.textContent = title;
+                effectModalCards.innerHTML = '';
+                drawn.forEach(card => { effectModalCards.innerHTML += `<img src="${card.img}" alt="${card.name}" class="w-32 h-auto rounded-lg">`; });
+                effectModal.classList.remove('hidden');
+            }
+        }
+        
+        function triggerCardEffect(card) {
+            setTimeout(() => {
+                switch(card.effect) {
+                    case 'add_points_50': soundManager.playSound('gainPoints'); showPointsAnimation('+50', 'text-green-400'); break;
+                    case 'add_points_30': soundManager.playSound('gainPoints'); showPointsAnimation('+30', 'text-green-400'); break;
+                    case 'subtract_points_20': soundManager.playSound('losePoints'); showPointsAnimation('-20', 'text-red-500'); break;
+                    case 'double_points': showPointsAnimation('x2', 'text-yellow-400'); break;
+                    case 'halve_points': showPointsAnimation('/2', 'text-orange-500'); break;
+                    case 'extra_card_yellow': drawExtraCards('yellow', 1); break;
+                    case 'extra_cards_purple_2': drawExtraCards('purple', 2); break;
+                    case 'extra_wild_card': 
+                        showPointsAnimation('¡Comodín Extra!', 'text-cyan-400');
+                        setTimeout(() => drawWildCard(true), 1200);
+                        break;
+                    case 'return_wild_card': showPointsAnimation('¡Devuelta!', 'text-gray-400'); break;
+                    case 'one_card_next_round':
+                        isOneCardNextRound = true;
+                        effectModalTitle.textContent = "¡Castigo!";
+                        effectModalCards.innerHTML = `<p class="text-center max-w-xs text-lg sm:text-xl">En la siguiente ronda, solo podrás robar una carta.</p>`;
+                        effectModal.classList.remove('hidden');
+                        break;
+                    case 'no_wild_card_next_round':
+                        canDrawWildNextRound = false;
+                        effectModalTitle.textContent = "¡Castigo!";
+                        effectModalCards.innerHTML = `<p class="text-center max-w-xs text-lg sm:text-xl">No podrás tomar cartas de comodín en la siguiente ronda.</p>`;
+                        effectModal.classList.remove('hidden');
+                        break;
+                }
+            }, 800);
+        }
+
+        function drawWildCard(isRedraw = false) {
+            soundManager.playSound('wildDraw');
+            
+            // Si el mazo de comodines se agota, se vuelve a llenar y se baraja.
+            if (wildDeck.length === 0) {
+                console.log("Mazo de comodines vacío. Rellenando y barajando de nuevo.");
+                wildDeck = [...wildCardData];
+                shuffle(wildDeck);
+            }
+            
+            const card = drawCard(wildDeck);
+            drawnWildCardContainer.innerHTML = '';
+
+            // Se elimina la lógica que mostraba "No quedan comodines",
+            // asegurando que siempre se pueda robar una carta.
+            const cardWrapper = document.createElement('div');
+            cardWrapper.className = 'wild-card-animation-wrapper';
+            cardWrapper.innerHTML = `<img src="${card.img}" alt="${card.name}" class="w-full h-full object-contain rounded-xl">`;
+            drawnWildCardContainer.appendChild(cardWrapper);
+            if (!isRedraw) { wildModal.classList.remove('hidden'); }
+            triggerCardEffect(card);
+        }
+        
+        function preloadImages() {
+            const allCardImages = [ ...blueCardData.map(c => c.img), ...purpleCardData.map(c => c.img), ...yellowCardData.map(c => c.img), ...wildCardData.map(c => c.img), blueCardBack, purpleCardBack, yellowCardBack, wildCardImage ];
+            const promises = allCardImages.map(src => new Promise((resolve) => {
+                const img = new Image(); img.src = src;
+                img.onload = resolve; img.onerror = () => { console.error(`Error al precargar: ${src}`); resolve(); };
+            }));
+            return Promise.all(promises);
+        }
+
+        async function initializeApp() {
+            setInitialDeckImages(); createDecks();
+            try {
+                await preloadImages();
+                loadingOverlay.classList.add('hidden');
+                if (localStorage.getItem('userHasRegistered') === 'true') { menuScreen.classList.remove('hidden'); } 
+                else { registrationModal.classList.remove('hidden'); }
+            } catch (error) {
+                console.error("Error catastrófico al precargar.", error);
+                loadingOverlay.innerHTML = '<h2 class="text-center text-red-500 text-xl font-semibold">Error al cargar. Recarga la página.</h2>';
+            }
+        }
+
+        // --- EVENT LISTENERS ---
+        playButton.addEventListener('click', () => {
+            initializeAudio().then(() => {
+                soundManager.playSound('click');
+                menuScreen.classList.add('hidden');
+                gameScreen.classList.remove('hidden');
+                resetGame();
+                Tone.Transport.start();
+            });
+        });
+
+        startButton.addEventListener('click', startRoundFlow); 
+        closeCardsModalBtn.addEventListener('click', closeInitialCards); // <-- USA LA NUEVA FUNCIÓN
+        closeWildModalBtn.addEventListener('click', closeWildModalWithEffect); // <-- USA LA NUEVA FUNCIÓN CON EFECTO
+        closeEffectModalBtn.addEventListener('click', () => effectModal.classList.add('hidden'));
+
+        wildDeckButton.addEventListener('click', () => {
+            if (wildDeckButton.disabled) return;
+            if (isGameRunning || isPostRoundPhase) {
+                drawWildCard();
+            }
+        });
+
+        playAgainButton.addEventListener('click', () => {
+            soundManager.playSound('click');
+            endGameModal.classList.add('hidden');
+            resetGame(); startRound();
+        });
+
+        backToMenuButton.addEventListener('click', () => {
+            soundManager.playSound('click');
+            endGameModal.classList.add('hidden');
+            gameScreen.classList.add('hidden');
+            menuScreen.classList.remove('hidden');
+            resetGame(); Tone.Transport.stop();
+        });
+
+        menuReturnButton.addEventListener('click', () => {
+            soundManager.playSound('click');
+            gameScreen.classList.add('hidden');
+            menuScreen.classList.remove('hidden');
+            resetGame(); Tone.Transport.stop();
+        });
+
+        muteButton.addEventListener('click', () => { soundManager.toggleMute(); });
+        
+        registrationForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            // IMPORTANTE: Reemplaza la siguiente URL con la URL de tu Web App de Google Apps Script
+            const scriptURL = 'https://script.google.com/macros/s/AKfycbySQsvqiqoePYhVsplZ7HS5Jkhbx1nMiLF-qIoEux8SOMJNgRx0znOiN6fg570XOfPGeg/exec'; 
+            const formData = new FormData(registrationForm);
+            
+            // Convertimos FormData a un objeto simple para poder enviarlo como JSON
+            const data = {};
+            formData.forEach((value, key) => {
+                data[key] = value;
+            });
+
+            registerButton.disabled = true;
+            registerButton.textContent = 'Registrando...';
+            registrationError.classList.add('hidden');
+
+            fetch(scriptURL, { 
+                method: 'POST',
+                mode: 'no-cors', // Importante para evitar errores de CORS con Google Scripts básicos
+                cache: 'no-cache',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data) 
+            })
+            .then(() => {
+                // Como usamos 'no-cors', la respuesta será opaca y no podremos leerla.
+                // Asumimos que el envío fue exitoso si no hubo un error de red.
+                console.log('Datos de registro enviados (se asume éxito).');
+                localStorage.setItem('userHasRegistered', 'true');
+                registrationModal.classList.add('hidden');
+                menuScreen.classList.remove('hidden');
+            })
+            .catch(error => {
+                console.error('Error al enviar el formulario:', error);
+                registrationError.textContent = 'Error de red. Por favor, revisa tu conexión a internet.';
+                registrationError.classList.remove('hidden');
+            })
+            .finally(() => {
+                 if (!localStorage.getItem('userHasRegistered')) {
+                    registerButton.disabled = false;
+                    registerButton.textContent = 'Registrar y Jugar';
+                }
+            });
+        });
+
+        // --- INICIALIZACIÓN ---
+        initializeApp();
+
+    </script>
+</body>
+</html>
+
